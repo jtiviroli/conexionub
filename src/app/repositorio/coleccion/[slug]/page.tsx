@@ -1,12 +1,13 @@
 'use client'
 
+import React, {useEffect, useState} from 'react'
 import Container from "@/components/container/Container";
 import Link from "next/link";
-
 import styles from './page.module.css'
 import {get} from '@/utils/request'
 import ResourcesList from './resourcelist'
 import {Resource} from '@/types/resources'
+import {useParams, useSearchParams} from 'next/navigation'
 
 type CollectionNode = {
     _id: string
@@ -16,24 +17,54 @@ type CollectionNode = {
     children?: CollectionNode[]
 }
 
-export default async function Collection({params, searchParams}: {
-    params: { slug: string },
-    searchParams: Record<string, string | string[] | undefined>
-}) {
-    const slug = params.slug
+export default function Collection() {
+    const params = useParams() as { slug?: string }
+    const searchParams = useSearchParams()
+    const slug = params.slug ?? ''
 
-    const pageSize = Array.isArray(searchParams.pageSize) ? searchParams.pageSize[0] : (searchParams.pageSize ?? '5')
-    const desc = Array.isArray(searchParams.desc) ? searchParams.desc[0] : (searchParams.desc ?? 'true')
+    const [tree, setTree] = useState<CollectionNode | null>(null)
+    const [resources, setResources] = useState<Resource[]>([])
+    const [hasMore, setHasMore] = useState<boolean>(false)
+    const [lastResource, setLastResource] = useState<string | null>(null)
+    const [loading, setLoading] = useState<boolean>(true)
+    const [error, setError] = useState<string | null>(null)
 
-    const qs = `?pageSize=${encodeURIComponent(pageSize)}&desc=${encodeURIComponent(desc)}&}`
+    // derive pageSize and desc from search params
+    const pageSizeParam = searchParams?.get('pageSize') ?? '5'
+    const descParam = searchParams?.get('desc') ?? 'true'
 
-    const res = await get(`/collection/${slug}${qs}`)
-    const data = res.response.data || {}
+    useEffect(() => {
+        if (!slug) return
+        let mounted = true
+        const load = async () => {
+            setLoading(true)
+            setError(null)
+            try {
+                const pageSize = encodeURIComponent(pageSizeParam)
+                const desc = encodeURIComponent(descParam)
+                const qs = `?pageSize=${pageSize}&desc=${desc}`
 
-    const tree: CollectionNode | null = data.tree ?? null
-    const resources: Resource[] = data.resources ?? []
-    const hasMore: boolean = data.hasMore ?? false
-    const lastResource: string | null = data.lastResource ?? null
+                const res = await get(`/collection/${slug}${qs}`)
+                if (!mounted) return
+                const data = res.response.data || {}
+
+                setTree(data.tree ?? null)
+                setResources(data.resources ?? [])
+                setHasMore(!!data.hasMore)
+                setLastResource(data.lastResource ?? null)
+            } catch (e) {
+                console.error('Error cargando colección', e)
+                if (!mounted) return
+                setError('No se pudo cargar la colección')
+            } finally {
+                if (!mounted) return
+                setLoading(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+        // depend on slug and serialized search params to refetch when changed
+    }, [slug, searchParams?.toString()])
 
     function renderChildren(node?: CollectionNode | null) {
         if (!node || !node.children || node.children.length === 0) return null
@@ -65,7 +96,7 @@ export default async function Collection({params, searchParams}: {
                     <form method="get" className={styles['filters']}>
                         <div className={styles['field']}>
                             <label className={styles['label']}>Tamaño</label>
-                            <select name="pageSize" defaultValue={pageSize} className={styles['select']}>
+                            <select name="pageSize" defaultValue={pageSizeParam} className={styles['select']}>
                                 <option value="5">5</option>
                                 <option value="10">10</option>
                                 <option value="20">20</option>
@@ -75,7 +106,7 @@ export default async function Collection({params, searchParams}: {
 
                         <div className={styles['field']}>
                             <label className={styles['label']}>Orden</label>
-                            <select name="desc" defaultValue={desc} className={styles['select']}>
+                            <select name="desc" defaultValue={descParam} className={styles['select']}>
                                 <option value="true">Descendente</option>
                                 <option value="false">Ascendente</option>
                             </select>
@@ -98,8 +129,8 @@ export default async function Collection({params, searchParams}: {
                     initialHasMore={hasMore}
                     initialLastResource={lastResource}
                     slug={slug}
-                    pageSize={Number(pageSize)}
-                    desc={desc === 'true'}
+                    pageSize={Number(pageSizeParam)}
+                    desc={descParam === 'true'}
                 />
 
             </Container>

@@ -1,5 +1,6 @@
 'use client'
 
+import React, {useEffect, useState} from 'react'
 import Container from "@/components/container/Container";
 import Link from "next/link";
 import {get} from "@/utils/request";
@@ -21,26 +22,47 @@ interface ApiResponseShape {
     authors?: ApiAuthorItem[];
 }
 
-export default async function Authors() {
-    // Petición a /authors con parámetros de query: lastAuthor y pageSize
-    // Asumimos pageSize por defecto de 20 y sin cursor inicial
-    const endpoint = `/authors`;
-    const request = await get(endpoint);
+export default function Authors() {
+    const [authors, setAuthors] = useState<Author[]>([])
+    const [loading, setLoading] = useState<boolean>(true)
+    const [error, setError] = useState<string | null>(null)
 
-    // La API devuelve un objeto { authors: [ { author: ["Nombre"], amount: 11 }, ... ] }
-    const raw = request.response.data as ApiResponseShape | undefined;
-    const items: ApiAuthorItem[] = raw && Array.isArray(raw.authors) ? raw.authors : [];
-
-    const authors: Author[] = items.map((it, idx) => {
-        const nameRaw = Array.isArray(it.author) ? (it.author[0] ?? '') : (it.author ?? '');
-        const name = String(nameRaw) || `author-${idx}`;
-        return {name, amount: it.amount};
-    });
+    useEffect(() => {
+        let mounted = true
+        const load = async () => {
+            setLoading(true)
+            setError(null)
+            try {
+                const endpoint = `/authors`
+                const request = await get(endpoint)
+                if (!mounted) return
+                const raw = request.response.data as ApiResponseShape | undefined
+                const items: ApiAuthorItem[] = raw && Array.isArray(raw.authors) ? raw.authors : []
+                const mapped = items.map((it, idx) => {
+                    const nameRaw = Array.isArray(it.author) ? (it.author[0] ?? '') : (it.author ?? '')
+                    const name = String(nameRaw) || `author-${idx}`
+                    return {name, amount: it.amount}
+                })
+                setAuthors(mapped)
+            } catch (e) {
+                console.error('Error cargando autores', e)
+                if (!mounted) return
+                setError('No se pudieron cargar autores')
+            } finally {
+                if (!mounted) return
+                setLoading(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+    }, [])
 
     return (
         <Container id={'autores'}
                    crumb={['Repositorio', <Link key={'Autores'} href={'#autores'}>Autores</Link>]}>
             <h1 className={styles['title']}>Autores del repositorio</h1>
+
+            {error && <p style={{color: 'var(--error, #b00020)'}}>{error}</p>}
 
             <div className={styles['list']}>
                 {authors.map((author, i) => (

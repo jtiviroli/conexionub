@@ -1,6 +1,6 @@
 "use client"
 
-import React, {useState} from 'react'
+import React, {useEffect, useState} from 'react'
 import styles from '@/app/repositorio/page.module.css'
 import {get} from '@/utils/request'
 import ResourceCard from '@/components/card/ResourceCard'
@@ -28,6 +28,19 @@ export default function ResourceList({
     const [lastResource, setLastResource] = useState<string | null>(initialLastResource)
     const [loading, setLoading] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
+
+    // Sincronizar con props iniciales cuando cambian (por ejemplo, carga asíncrona en padre)
+    useEffect(() => {
+        setResources(initialResources)
+    }, [initialResources])
+
+    useEffect(() => {
+        setHasMore(initialHasMore)
+    }, [initialHasMore])
+
+    useEffect(() => {
+        setLastResource(initialLastResource)
+    }, [initialLastResource])
 
     const buildUrl = (lastShown?: string | null) => {
         const base = baseEndpoint

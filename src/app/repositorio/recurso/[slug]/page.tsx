@@ -1,10 +1,12 @@
 'use client'
 
+import React, {useEffect, useState} from 'react'
 import Container from "@/components/container/Container";
 import Link from "next/link";
 import {get} from "@/utils/request";
 import styles from './page.module.css'
 import {notFound} from "next/navigation";
+import {useParams} from 'next/navigation'
 
 type ResourceResponse = {
     dc: {
@@ -34,13 +36,45 @@ type ResourceResponse = {
     }
 }
 
-export default async function Resource({params}: { params: { slug: string } }) {
-    const slug = await params.slug
+export default function Resource() {
+    const params = useParams() as { slug?: string }
+    const slug = params.slug ?? ''
 
-    const request = await get('/resource/' + slug)
-    if (request.response.status !== 200)
-        return ''
-    const resource = request.response.data as ResourceResponse
+    const [resource, setResource] = useState<ResourceResponse | null>(null)
+    const [loading, setLoading] = useState<boolean>(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!slug) return
+        let mounted = true
+        const load = async () => {
+            setLoading(true)
+            try {
+                const request = await get('/resource/' + slug)
+                if (!mounted) return
+                if (request.response.status !== 200) {
+                    setError('Recurso no encontrado')
+                    setResource(null)
+                } else {
+                    setResource(request.response.data as ResourceResponse)
+                }
+            } catch (e) {
+                console.error('Error cargando recurso', e)
+                if (!mounted) return
+                setError('No se pudo cargar el recurso')
+            } finally {
+                if (!mounted) return
+                setLoading(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+    }, [slug])
+
+    if (!slug) return null
+    if (loading) return (<Container id={slug} crumb={[<Link key={'repositorio'} href={'/repositorio'}>Repositorio</Link>]}>Cargando...</Container>)
+    if (error) return (<Container id={slug} crumb={[<Link key={'repositorio'} href={'/repositorio'}>Repositorio</Link>]}> {error} </Container>)
+    if (!resource) return notFound()
 
     const titleEs = resource.dc.title.find(title => title.language === 'es')?.title
     const descriptionEs = resource.dc.description?.find(d => d.language === 'es')?.abstract
@@ -58,12 +92,12 @@ export default async function Resource({params}: { params: { slug: string } }) {
 
     return (
         <>
-            <Container id={params.slug}
+            <Container id={slug}
                        crumb={[<Link key={'repositorio'} href={'/repositorio'}>Repositorio</Link>,
                            <Link key={'cols'} href={'/repositorio/colecciones'}>Colecciones</Link>,
                            ...collectionCrumbs,
                            <Link key={'repo'} href={'/repositorio/coleccion/' + collectionId}>{collectionName}</Link>,
-                           <Link key={'slug'} href={'#' + params.slug}>{titleEs}</Link>]}>
+                           <Link key={'slug'} href={'#' + slug}>{titleEs}</Link>]}>
                 <h1 className={styles['title']}>{titleEs}</h1>
                 <div className={styles['resource-grid']}>
                     <aside className={styles['resource-info']}>
