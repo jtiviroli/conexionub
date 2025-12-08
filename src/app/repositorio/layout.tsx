@@ -37,7 +37,9 @@ export default function RepoLayout({children}: { children: React.ReactNode }) {
             ]}/>
             <div style={{display: 'flex', alignItems: 'flex-start'}}>
                 <div style={{flex: 1, minWidth: 0}}>
-                    {children}
+                    <React.Suspense fallback={<div>Cargando...</div>}>
+                        {children}
+                    </React.Suspense>
                 </div>
                 <Sidebar/>
             </div>
