@@ -1,3 +1,5 @@
+'use client'
+
 import Container from "@/components/container/Container";
 import Link from "next/link";
 
@@ -59,7 +61,6 @@ export default async function Collection({params, searchParams}: {
                            <Link key={'col'} href={'#col'}>{tree?.name ?? 'Colección'}</Link>]}
             >
 
-                {/* Filtros: ahora dentro del contenedor y con clases para estilizar */}
                 <div className={styles['filtersBox']}>
                     <form method="get" className={styles['filters']}>
                         <div className={styles['field']}>

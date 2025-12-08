@@ -1,3 +1,5 @@
+'use client'
+
 import Container from "@/components/container/Container";
 import Link from "next/link";
 import {get} from "@/utils/request";
@@ -37,7 +39,7 @@ export default async function Resource({params}: { params: { slug: string } }) {
 
     const request = await get('/resource/' + slug)
     if (request.response.status !== 200)
-        return notFound()
+        return ''
     const resource = request.response.data as ResourceResponse
 
     const titleEs = resource.dc.title.find(title => title.language === 'es')?.title

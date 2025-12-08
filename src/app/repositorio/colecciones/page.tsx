@@ -1,3 +1,5 @@
+'use client'
+
 import Container from "@/components/container/Container";
 import Link from "next/link";
 import {get} from "@/utils/request";
