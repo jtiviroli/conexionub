@@ -16,7 +16,6 @@ export const post = async <B = any, R = any>(
     endpoint: string,
     body: B | FormData,
 ): Promise<ApiResponse<R>> => {
-    console.log(endpoint, body)
     try {
         const response = await axios.post(host + endpoint, body)
         return {response: {status: response.status, data: response.data as R}}
